@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+       http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.2.xsd">
+
+  <!-- 配置路径扩展名映射的媒体类型 -->
+  <bean name="pathExtensionContentNegotiationStrategy"
+        class="org.springframework.web.accept.PathExtensionContentNegotiationStrategy">
+    <constructor-arg>
+      <props>
+        <!-- if romePresent -->
+        <prop key="atom">application/atom+xml</prop>
+        <prop key="rss">application/rss+xml</prop>
+        <!-- endif -->
+        <!-- if jackson2Present || jacksonPresent -->
+        <prop key="json">application/json</prop>
+        <!-- endif -->
+        <!-- if jaxb2Present -->
+        <prop key="xml">application/xml</prop>
+        <!-- endif -->
+      </props>
+    </constructor-arg>
+  </bean>
+
+  <!-- 配置映射媒体类型的策略 -->
+  <bean name="mvcContentNegotiationManager"
+        class="org.springframework.web.accept.ContentNegotiationManager">
+    <constructor-arg>
+      <list>
+        <ref bean="pathExtensionContentNegotiationStrategy" />
+      </list>
+    </constructor-arg>
+  </bean>
+
+  <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping">
+    <property name="order" value="0"/>
+    <property name="removeSemicolonContent" value="false"/>
+    <property name="contentNegotiationManager" ref="mvcContentNegotiationManager"/>
+  </bean>
+
+  <!-- 配置数据转换服务，默认使用格式化数据转换服务，可以对日期和数字进行格式化 -->
+  <bean name="conversionService"
+        class="org.springframework.format.support.DefaultFormattingConversionService">
+    <constructor-arg index="0">
+      <null/>
+    </constructor-arg>
+    <constructor-arg index="1" value="true"/>
+  </bean>
+
+  <bean name="validator"
+        class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean"/>
+
+  <!-- 配置数据绑定，通过转换服务实现绑定，如果包含jsr303实现还将进行校验 -->
+  <bean name="webBindingInitializer"
+        class="org.springframework.web.bind.support.ConfigurableWebBindingInitializer">
+    <property name="conversionService" ref="conversionService" />
+    <!-- if jsr303Present -->
+    <property name="validator" ref="validator" />
+    <!-- endif -->
+  </bean>
+
+  <bean name="byteArrayHttpMessageConverter"
+        class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+
+  <bean name="stringHttpMessageConverter"
+        class="org.springframework.http.converter.StringHttpMessageConverter">
+    <property name="writeAcceptCharset" value="false" />
+  </bean>
+
+  <bean name="resourceHttpMessageConverter"
+        class="org.springframework.http.converter.ResourceHttpMessageConverter"/>
+  <bean name="sourceHttpMessageConverter"
+        class="org.springframework.http.converter.xml.SourceHttpMessageConverter"/>
+  <bean name="allEncompassingFormHttpMessageConverter"
+        class="org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter"/>
+  <bean name="atomFeedHttpMessageConverter"
+        class="org.springframework.http.converter.feed.AtomFeedHttpMessageConverter"/>
+  <bean name="rssChannelHttpMessageConverter"
+        class="org.springframework.http.converter.feed.RssChannelHttpMessageConverter"/>
+  <bean name="jaxb2RootElementHttpMessageConverter"
+        class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter"/>
+  <bean name="mappingJacksonHttpMessageConverter"
+        class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter"/>
+
+  <!-- 配置@RequestBody，@ResponseBody注解可用的转换器 -->
+  <util:list id="messageConverters"
+             list-class="org.springframework.beans.factory.support.ManagedList">
+    <ref bean="byteArrayHttpMessageConverter" />
+    <ref bean="stringHttpMessageConverter" />
+    <ref bean="resourceHttpMessageConverter" />
+    <ref bean="sourceHttpMessageConverter" />
+    <ref bean="allEncompassingFormHttpMessageConverter" />
+    <!-- if romePresent -->
+    <ref bean="atomFeedHttpMessageConverter" />
+    <ref bean="rssChannelHttpMessageConverter" />
+    <!-- endif -->
+    <!-- if jaxb2Present -->
+    <ref bean="jaxb2RootElementHttpMessageConverter" />
+    <!-- endif -->
+    <!-- if jacksonPresent -->
+    <ref bean="mappingJacksonHttpMessageConverter" />
+    <!-- endif -->
+  </util:list>
+
+  <!-- 将任意类型的Controller适配为Handler -->
+  <bean name="requestMappingHandlerAdapter"
+        class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+    <property name="contentNegotiationManager" ref="mvcContentNegotiationManager" />
+    <property name="webBindingInitializer" ref="webBindingInitializer" />
+    <property name="messageConverters" ref="messageConverters" />
+  </bean>
+
+  <!-- 这个拦截器暴露转换器服务让spring:bind和spring:eval标签可用 -->
+  <bean name="csInterceptor"
+        class="org.springframework.web.servlet.handler.ConversionServiceExposingInterceptor">
+    <constructor-arg index="0" ref="conversionService"/>
+  </bean>
+
+  <!-- 现在所有拦截器都必须设定响应的路径映射 -->
+  <bean name="mappedCsInterceptor"
+        class="org.springframework.web.servlet.handler.MappedInterceptor">
+    <constructor-arg index="0">
+      <null/>
+    </constructor-arg>
+    <constructor-arg index="1" ref="csInterceptor"/>
+  </bean>
+
+  <!-- 使用@ExceptionHandler注解的方法来处理Exception，优先级为0（最高） -->
+  <bean name="exceptionHandlerExceptionResolver"
+        class="org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver">
+    <property name="contentNegotiationManager" ref="mvcContentNegotiationManager" />
+    <property name="messageConverters" ref="messageConverters" />
+    <property name="order" value="0" />
+  </bean>
+
+  <!-- 如果抛出的Exception类带有@ResponseStatus注解，响应返回该注解的Http状态码，优先级为1 -->
+  <bean name="responseStatusExceptionResolver"
+        class="org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionResolver">
+    <property name="order" value="1" />
+  </bean>
+
+  <!-- SpringMvc内部异常处理 -->
+  <bean name="defaultExceptionResolver"
+        class="org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver">
+    <property name="order" value="2" />
+  </bean>
+
+  <context:component-scan base-package="org.w.spring"/>
+
+  <!-- Resolves views selected for rendering by @Controllers to .jsp resources in the /WEB-INF/views directory -->
+  <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="prefix" value="/WEB-INF/views/" />
+    <property name="suffix" value=".jsp" />
+  </bean>
+
+  <!-- Maps '/' requests to the 'home' view -->
+  <mvc:view-controller path="/" view-name="home"/>
+
+
+</beans>
