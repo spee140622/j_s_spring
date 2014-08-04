@@ -162,5 +162,4 @@
   <!-- Maps '/' requests to the 'home' view -->
   <mvc:view-controller path="/" view-name="home"/>
 
-
 </beans>

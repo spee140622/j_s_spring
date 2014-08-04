@@ -9,6 +9,7 @@
 <html>
 <head>
     <title>home</title>
+    <script type="application/javascript" src="${pageContext.request.contextPath}/ui/js/easyui/jquery.min.js"></script>
 </head>
 <body>
     home
