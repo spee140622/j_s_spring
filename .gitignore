@@ -13,3 +13,9 @@ hs_err_pid*
 /spring-mvc-3/.idea
 /spring-mvc-3/target
 /spring-mvc-3/*.iml
+
+/spring-mvc3-framework/.idea
+/spring-mvc3-framework/*.iml
+/spring-mvc3-framework/spring.mvc.demo/target
+
+*.iml
